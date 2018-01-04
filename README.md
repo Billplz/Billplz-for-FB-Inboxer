@@ -57,7 +57,8 @@ Accept payment using Billplz by using this plugin
     - **billplz_api_key**: _VARCHAR(250)_
     - **billplz_x_signature**: _VARCHAR(250)_
     - **billplz_collection_id**: _VARCHAR(250)_
-You may refer to example: [Wiki](https://github.com/wzul/Billplz-for-FB-Inboxer/wiki/Table-Structure:-payment_config)
+
+    You may refer to example: [Wiki](https://github.com/wzul/Billplz-for-FB-Inboxer/wiki/Table-Structure:-payment_config)
 
 4. Set your **API Key**, **Collection ID** and **X Signature Key** on FB Inboxer as follows:
     - **Administration** >> **Payment** >> **Payment Settings**
