@@ -1,634 +1,359 @@
 <?php
-    class Billplz_API
+
+class Billplz_API
+{
+    private $connect;
+
+    public function __construct($connect)
     {
-        public static $version = 3.06;
-        public $array;
-        public $obj;
-        public $url;
-        public $id;
-        public $deliverLevel;
-        public $errorMessage;
-        private $api_key_status = false;
-
-        /*
-         * API Key & X Signature Key may changed anytime
-         * Provided if API Key and X Signature not provided
-         */
-        public static $api_key = '4e49de80-1670-4606-84f8-2f1d33a38670';
-        public static $x_signature = 'S-0Sq67GFD9Y5iXmi5iXMKsA';
-
-        public function __construct($api_key = '')
-        {
-            $this->array = array();
-            $this->obj = new BillplzAction;
-            if (empty($api_key)) {
-                $this->obj->setAPI(self::$api_key);
-            } else {
-                $this->obj->setAPI($api_key);
-            }
-        }
-        /*
-         * Calling it with empty parameter will result to staging API Key
-         * Default: Staging API Key
-         */
-
-        public function setAPIKey($api_key = '')
-        {
-            if (empty($api_key)) {
-                $this->obj->setAPI(self::$api_key);
-            } else {
-                $this->obj->setAPI($api_key);
-            }
-            return $this;
-        }
-
-        public function getCollectionIndex($page = '1', $mode = '', $status = null)
-        {
-
-            /*
-             * Identify mode if not supplied
-             */
-
-            if (empty($mode)) {
-                $mode = $this->check_api_key();
-            }
-
-            $this->obj->setAction('GETCOLLECTIONINDEX');
-
-            $this->obj->setURL($mode);
-            $array = array(
-                'page' => $page,
-                'status' => $status,
-            );
-            $data = $this->obj->curl_action($array);
-
-            return $data;
-        }
-
-        public static function getRedirectData($signkey = '')
-        {
-            if (empty($signkey)) {
-                $signkey = self::$x_signature;
-            }
-
-            $data = array(
-                'id' => isset($_GET['billplz']['id']) ? $_GET['billplz']['id'] : self::throwException('Billplz ID is not supplied'),
-                'paid_at' => isset($_GET['billplz']['paid_at']) ? $_GET['billplz']['paid_at'] : self::throwException('Please enable Billplz XSignature Payment Completion'),
-                'paid' => isset($_GET['billplz']['paid']) ? $_GET['billplz']['paid'] : self::throwException('Please enable Billplz XSignature Payment Completion'),
-                'x_signature' => isset($_GET['billplz']['x_signature']) ? $_GET['billplz']['x_signature'] : self::throwException('Please enable Billplz XSignature Payment Completion'),
-            );
-            $preparedString = '';
-            foreach ($data as $key => $value) {
-                $preparedString .= 'billplz' . $key . $value;
-                if ($key === 'paid') {
-                    break;
-                } else {
-                    $preparedString .= '|';
-                }
-            }
-            $generatedSHA = hash_hmac('sha256', $preparedString, $signkey);
-
-            /*
-             * Convert paid status to boolean
-             */
-            $data['paid'] = $data['paid'] === 'true' ? true : false;
-
-            if ($data['x_signature'] === $generatedSHA) {
-                return $data;
-            } else {
-                self::throwException('Data has been tempered');
-            }
-        }
-
-        public static function throwException($message)
-        {
-            throw new Exception($message);
-        }
-
-        public static function getSignature()
-        {
-            if (isset($_POST['x_signature'])) {
-                return $_POST['x_signature'];
-            } elseif (isset($_GET['billplz']['x_signature'])) {
-                return $_GET['billplz']['x_signature'];
-            }
-            self::throwException('X Signature is not enabled');
-        }
-
-        public static function getCallbackData($signkey = '')
-        {
-            if (empty($signkey)) {
-                $signkey = self::$x_signature;
-            }
-
-            $data = array(
-                'amount' => isset($_POST['amount']) ? $_POST['amount'] : self::throwException('Amount is not supplied'),
-                'collection_id' => isset($_POST['collection_id']) ? $_POST['collection_id'] : self::throwException('Collection ID is not supplied'),
-                'due_at' => isset($_POST['due_at']) ? $_POST['due_at'] : '',
-                'email' => isset($_POST['email']) ? $_POST['email'] : '',
-                'id' => isset($_POST['id']) ? $_POST['id'] : self::throwException('Billplz ID is not supplied'),
-                'mobile' => isset($_POST['mobile']) ? $_POST['mobile'] : '',
-                'name' => isset($_POST['name']) ? $_POST['name'] : self::throwException('Payer Name is not supplied'),
-                'paid_amount' => isset($_POST['paid_amount']) ? $_POST['paid_amount'] : '',
-                'paid_at' => isset($_POST['paid_at']) ? $_POST['paid_at'] : '',
-                'paid' => isset($_POST['paid']) ? $_POST['paid'] : self::throwException('Paid status is not supplied'),
-                'state' => isset($_POST['state']) ? $_POST['state'] : self::throwException('State is not supplied'),
-                'url' => isset($_POST['url']) ? $_POST['url'] : self::throwException('URL is not supplied'),
-                'x_signature' => isset($_POST['x_signature']) ? $_POST['x_signature'] : self::throwException('X Signature is not enabled'),
-            );
-            $preparedString = '';
-            foreach ($data as $key => $value) {
-                $preparedString .= $key . $value;
-                if ($key === 'url') {
-                    break;
-                } else {
-                    $preparedString .= '|';
-                }
-            }
-            $generatedSHA = hash_hmac('sha256', $preparedString, $signkey);
-
-            /*
-             * Convert paid status to boolean
-             */
-            $data['paid'] = $data['paid'] === 'true' ? true : false;
-
-            if ($data['x_signature'] === $generatedSHA) {
-                return $data;
-            } else {
-                self::throwException('Data has been tempered');
-            }
-        }
-        /*
-         * Return true if delete bill success
-         * Return false if delete bill not success
-         */
-
-        public function deleteBill($bill_id, $mode = '')
-        {
-
-            /*
-             * Identify mode if not supplied
-             */
-
-            if (empty($mode)) {
-                $mode = $this->check_api_key();
-            }
-            $this->obj->setAction('DELETE');
-            $this->obj->setURL($mode, $bill_id);
-            $data = $this->obj->curl_action();
-
-            if (empty($data)) {
-                return true;
-            }
-
-            /*
-             * In case of the system admin changing Billplz Account,
-             * the bills that trying to be deleted not in the new account,
-             * think it as success
-             */
-
-            if ($data['type'] === 'RecordNotFound') {
-                return true;
-            }
-
-            return false;
-        }
-
-        public function checkMobileNumber($mobile)
-        {
-            $mobile = preg_replace("/[^0-9]/", "", $mobile);
-            $custTel = $mobile;
-            $custTel2 = substr($mobile, 0, 1);
-            if ($custTel2 == '+') {
-                $custTel3 = substr($mobile, 1, 1);
-                if ($custTel3 != '6') {
-                    $custTel = "+6" . $mobile;
-                }
-            } elseif ($custTel2 == '6') {
-            } else {
-                if ($custTel != '') {
-                    $custTel = "+6" . $mobile;
-                }
-            }
-            return $custTel;
-        }
-
-        public function setCollection($collection_id)
-        {
-            $this->array['collection_id'] = $collection_id;
-            return $this;
-        }
-
-        public function setName($name)
-        {
-            $this->array['name'] = $name;
-            return $this;
-        }
-
-        public function setEmail($email)
-        {
-            $this->array['email'] = $email;
-            return $this;
-        }
-
-        public function setMobile($mobile)
-        {
-            $this->array['mobile'] = $this->checkMobileNumber($mobile);
-            return $this;
-        }
-
-        public function setAmount($amount)
-        {
-            $this->array['amount'] = preg_replace("/[^0-9.]/", "", $amount) * 100;
-            return $this;
-        }
-
-        public function setDeliver($deliver)
-        {
-            /*
-             * '0' => No Notification
-             * '1' => Email Notification
-             * '2' => SMS Notification
-             * '3' => Email & SMS Notification
-             *
-             * However, if the setting is SMS and mobile phone is not given,
-             * the Email value should be used and set the delivery to false.
-             */
-            $this->deliverLevel = $deliver;
-            $this->array['deliver'] = $deliver != '0' ? true : false;
-            return $this;
-        }
-
-        public function setReference_1($reference_1)
-        {
-            if (!empty($reference_1)) {
-                $this->array['reference_1'] = substr($reference_1, 0, 119);
-            }
-            return $this;
-        }
-
-        public function setReference_2($reference_2)
-        {
-            if (!empty($reference_2)) {
-                $this->array['reference_2'] = substr($reference_2, 0, 119);
-            }
-            return $this;
-        }
-
-        public function setDescription($description)
-        {
-            $this->array['description'] = substr($description, 0, 199);
-            return $this;
-        }
-
-        public function setPassbackURL($callback_url, $redirect_url = '')
-        {
-            $this->array['redirect_url'] = $redirect_url;
-            $this->array['callback_url'] = $callback_url;
-            return $this;
-        }
-
-        public function setReference_1_Label($label)
-        {
-            if (!empty($label)) {
-                $this->array['reference_1_label'] = substr($label, 0, 19);
-            }
-            return $this;
-        }
-
-        public function setReference_2_Label($label)
-        {
-            if (!empty($label)) {
-                $this->array['reference_2_label'] = substr($label, 0, 19);
-            }
-            return $this;
-        }
-
-        public function create_collection($title = 'Payment For Purchase', $mode = '')
-        {
-
-            /*
-             * Identify mode if not supplied
-             */
-
-            if (empty($mode)) {
-                $mode = $this->check_api_key();
-            }
-
-            $this->obj->setAction('COLLECTIONS');
-
-            $this->obj->setURL($mode);
-            $data = array(
-                'title' => $title
-            );
-            $collection = $this->obj->curl_action($data);
-            return $collection['id'];
-        }
-        /*
-         * Determine the API Key is belong to Production or Staging
-         * Else, exit the program.
-         */
-
-        public function check_api_key()
-        {
-            $this->obj->setAction('GETCOLLECTIONINDEX');
-            $array = array(
-                'page' => '1',
-                'status' => null,
-            );
-            $this->obj->setURL('Production');
-
-            $status = $this->obj->curl_action($array);
-            if (isset($status['collections'])) {
-                $this->api_key_status = true;
-                return 'Production';
-            }
-            $this->obj->setURL('Staging');
-            $status = $this->obj->curl_action($array);
-
-            if (isset($status['collections'])) {
-                $this->api_key_status = true;
-                return 'Staging';
-            } else {
-                $this->setAPIKey();
-                $this->api_key_status = false;
-                return 'Staging';
-            }
-        }
-
-        public function get_api_key_status()
-        {
-            return $this->api_key_status;
-        }
-
-        public function check_collection_id($collection_id, $mode = '')
-        {
-
-            /*
-             * Identify mode if not supplied
-             */
-
-            if (empty($mode)) {
-                $mode = $this->check_api_key();
-            }
-
-            $this->obj->setAction('CHECKCOLLECTION');
-            $this->obj->setURL($mode);
-            $data = array(
-                'id' => $collection_id
-            );
-            $status = $this->obj->curl_action($data);
-            if (isset($status['id'])) {
-                if ($status['id'] == $collection_id) {
-                    return true;
-                }
-            }
-            return false;
-        }
-        /*
-         * Return the first active collection on first page.
-         * If none, return the first collection of inactive collection.
-         *
-         * If collection is not created yet, create one
-         */
-
-        public function get_active_collection($data)
-        {
-            if (empty($data['collections'])) {
-                $collection_id = $this->create_collection();
-            } else {
-                for ($i = 0; $i < sizeof($data['collections']); $i++) {
-                    if ($data['collections'][$i]['status'] == 'active') {
-                        $collection_id = $data['collections'][$i]['id'];
-                        break;
-                    } else {
-                        $collection_id = $data['collections'][0]['id'];
-                    }
-                }
-            }
-            return $collection_id;
-        }
-
-        public function get_transaction_index($bill_id, $page = '1', $status = 'completed', $mode = '')
-        {
-            /*
-             * Identify mode if not supplied
-             */
-
-            if (empty($mode)) {
-                $mode = $this->check_api_key();
-            }
-
-            $this->obj->setAction('GETTRANSACTIONINDEX');
-
-            $this->obj->setURL($mode, $bill_id);
-            $array = array(
-                'page' => $page,
-                'status' => $status,
-            );
-            $data = $this->obj->curl_action($array);
-
-            return $data;
-        }
-
-        public function get_bill_paid_time($bill_id, $mode = '')
-        {
-            $array = $this->get_transaction_index($bill_id, $mode);
-
-            foreach ($array['transactions'] as $transactions) {
-                if ($transactions['status'] === 'completed') {
-                    return $transactions['completed_at'];
-                }
-            }
-
-            return '';
-        }
-
-        public function create_bill($checkCollection = false, $mode = '')
-        {
-            /*
-             * Identify mode if not supplied
-             */
-
-            if (empty($mode)) {
-                $mode = $this->check_api_key();
-            }
-
-            /*
-             * Check Collection ID that has been entered is valid or not
-             * If invalid, unset and auto-assign collection id
-             */
-
-            if ($checkCollection && isset($this->array['collection_id'])) {
-                $status = $this->check_collection_id($this->array['collection_id'], $mode);
-                if (!$status) {
-                    unset($this->array['collection_id']);
-                }
-            }
-
-            /*
-             * Check wether the collection id is not set
-             * If not set, get collection id
-             */
-
-            if (!isset($this->array['collection_id'])) {
-                $collectionData = $this->getCollectionIndex($mode);
-
-                $this->array['collection_id'] = $this->get_active_collection($collectionData);
-            }
-
-            $this->obj->setAction('CREATE');
-            $this->obj->setURL($mode);
-
-            /*
-             * 1. Check deliverLevel. If 1 (Email only), unset mobile
-             * 2. Check deliverLevel. If 2 (SMS only), unset Email
-             * 3. Create Bills.
-             * 4. If the bills failed to be created:
-             * 5. Check if 0 (No Notification), unset Mobile
-             * 5. Check if 1(Email only), unset Email, set Mobile, deliver to false
-             * 6. Check if 2(SMS only), unset Mobile, set Email deliver to false
-             * 7. Check if 3, unset Mobile.
-             * 8. Still failed? Return false.
-             * 9. Ok. Return $this.
-             */
-
-            if ($this->deliverLevel == '1') {
-                $mobile = $this->array['mobile'];
-                unset($this->array['mobile']);
-            } elseif ($this->deliverLevel == '2') {
-                $email = $this->array['email'];
-                unset($this->array['email']);
-            }
-
-            $data = $this->obj->curl_action($this->array);
-            if (isset($data['error'])) {
-                if ($this->deliverLevel == '1') {
-                    unset($this->array['email']);
-                    $this->array['mobile'] = $mobile;
-                    $this->array['deliver'] = false;
-                } elseif ($this->deliverLevel == '2') {
-                    unset($this->array['mobile']);
-                    $this->array['email'] = $email;
-                    $this->array['deliver'] = false;
-                } else {
-                    unset($this->array['mobile']);
-                }
-                $data = $this->obj->curl_action($this->array);
-            }
-
-            if (isset($data['error'])) {
-                $this->errorMessage = $data['error']['type'] . ' ' . print_r($data['error']['message'], true);
-                return false;
-            }
-            $this->url = $data['url'];
-            $this->id = $data['id'];
-            return $this;
-        }
-
-        public function getURL()
-        {
-            return $this->url;
-        }
-
-        public function getErrorMessage()
-        {
-            return $this->errorMessage;
-        }
-
-        public function getID()
-        {
-            return $this->id;
-        }
-        /*
-         * Get Bills
-         */
-
-        public function check_bill($bill_id, $mode = '')
-        {
-
-            /*
-             * Identify mode if not supplied
-             */
-
-            if (empty($mode)) {
-                $mode = $this->check_api_key();
-            }
-            $this->obj->setAction('CHECK');
-            $this->obj->setURL($mode, $bill_id);
-            $data = $this->obj->curl_action();
-            return $data;
-        }
+        $this->connect = $connect;
     }
 
-    class BillplzAction
+    public function setConnect($connect)
     {
-        public $url;
-        public $action;
-        public $curldata;
-        public $api_key;
-        public static $production = 'https://www.billplz.com/api/v3/';
-        public static $staging = 'https://billplz-staging.herokuapp.com/api/v3/';
-
-        public function setAPI($api_key)
-        {
-            $this->api_key = $api_key;
-            return $this;
-        }
-
-        public function setAction($action)
-        {
-            $this->action = $action;
-            return $this;
-        }
-
-        public function setURL($mode, $id = '')
-        {
-            if ($mode == 'Staging') {
-                $this->url = self::$staging;
-            } elseif ($mode == 'Production') {
-                $this->url = self::$production;
-            } else {
-                self::throwException('Invalid API Key Provided');
-            }
-            if ($this->action == 'DELETE' || $this->action == 'CHECK') {
-                $this->url .= 'bills/' . $id;
-            } elseif ($this->action == 'CREATE') {
-                $this->url .= 'bills/';
-            } elseif ($this->action == 'GETCOLLECTIONINDEX') {
-                $this->url .= 'collections';
-            } elseif ($this->action == 'GETTRANSACTIONINDEX') {
-                $this->url .= 'bills/' . $id . '/transactions';
-            } else { //COLLECTIONS or CHECKCOLLECTION
-                $this->url .= 'collections/';
-            }
-            return $this;
-        }
-
-        public function curl_action($data = '')
-        {
-            if ($this->action == 'GETCOLLECTIONINDEX' || $this->action == 'GETTRANSACTIONINDEX') {
-                $this->url .= '?page=' . $data['page'] . '&status=' . $data['status'];
-            } elseif ($this->action == 'CHECKCOLLECTION') {
-                $this->url .= $data['id'];
-            }
-
-
-            $process = curl_init();
-            curl_setopt($process, CURLOPT_URL, $this->url);
-            curl_setopt($process, CURLOPT_HEADER, 0);
-            curl_setopt($process, CURLOPT_USERPWD, $this->api_key . ":");
-            if ($this->action == 'DELETE') {
-                curl_setopt($process, CURLOPT_CUSTOMREQUEST, "DELETE");
-            }
-            curl_setopt($process, CURLOPT_TIMEOUT, 10);
-            curl_setopt($process, CURLOPT_RETURNTRANSFER, true);
-            if ($this->action == 'CREATE' || $this->action == 'COLLECTIONS') {
-                curl_setopt($process, CURLOPT_POSTFIELDS, http_build_query($data));
-            }
-            $return = curl_exec($process);
-            curl_close($process);
-            $this->curldata = json_decode($return, true);
-            return $this->curldata;
-        }
+        $this->connect = $connect;
     }
+
+    /**
+     * This method is to change the URL to staging if failed to authenticate with production.
+     * It will recall the method that has executed previously to perform it in staging.
+     */
+    private function detectMode($method_name, $response, $parameter = '', $optional = '', $extra = '')
+    {
+        if ($response[0] === 401 && $this->connect->detect_mode) {
+            $this->connect->detect_mode = false;
+            $this->connect->setMode(false);
+            if (!empty($extra)) {
+                return $this->{$method_name}($parameter, $optional, $extra);
+            } elseif (!empty($optional)) {
+                return $this->{$method_name}($parameter, $optional);
+            } elseif (!empty($parameter)) {
+                return $this->{$method_name}($parameter);
+            } else {
+                return $this->{$method_name}();
+            }
+        }
+        return false;
+    }
+
+    public function getCollectionIndex($parameter = array())
+    {
+        $response = $this->connect->getCollectionIndex($parameter);
+        if ($detect_mode = $this->detectMode(__FUNCTION__, $response, $parameter)) {
+            return $detect_mode;
+        }
+        return $response;
+    }
+
+    public function createCollection($parameter, $optional = array())
+    {
+        $response = $this->connect->createCollection($parameter, $optional);
+        if ($detect_mode = $this->detectMode(__FUNCTION__, $response, $parameter, $optional)) {
+            return $detect_mode;
+        }
+        return $response;
+    }
+
+    public function getCollection($parameter)
+    {
+        $response = $this->connect->getCollection($parameter);
+        if ($detect_mode = $this->detectMode(__FUNCTION__, $response, $parameter)) {
+            return $detect_mode;
+        }
+        return $response;
+    }
+
+    public function createOpenCollection($parameter, $optional = array())
+    {
+        $parameter['title'] = substr($parameter['title'], 0, 49);
+        $parameter['description'] = substr($parameter['description'], 0, 199);
+
+        if (intval($parameter['amount']) > 999999999) {
+            throw new \Exception("Amount Invalid. Too big");
+        }
+
+        $response = $this->connect->createOpenCollection($parameter, $optional);
+        if ($detect_mode = $this->detectMode(__FUNCTION__, $response, $parameter, $optional)) {
+            return $detect_mode;
+        }
+        return $response;
+    }
+
+    public function getOpenCollection($parameter)
+    {
+        $response = $this->connect->getOpenCollection($parameter);
+        if ($detect_mode = $this->detectMode(__FUNCTION__, $response, $parameter)) {
+            return $detect_mode;
+        }
+        return $response;
+    }
+
+    public function getOpenCollectionIndex($parameter = array())
+    {
+        $response = $this->connect->getOpenCollectionIndex($parameter);
+        if ($detect_mode = $this->detectMode(__FUNCTION__, $response, $parameter)) {
+            return $detect_mode;
+        }
+        return $response;
+    }
+
+    public function createMPICollection($parameter)
+    {
+        $response = $this->connect->createMPICollection($parameter);
+        if ($detect_mode = $this->detectMode(__FUNCTION__, $response, $parameter)) {
+            return $detect_mode;
+        }
+        return $response;
+    }
+
+    public function getMPICollection($parameter)
+    {
+        $response = $this->connect->getMPICollection($parameter);
+        if ($detect_mode = $this->detectMode(__FUNCTION__, $response, $parameter)) {
+            return $detect_mode;
+        }
+        return $response;
+    }
+
+    public function createMPI($parameter, $optional = array())
+    {
+        $response = $this->connect->createMPI($parameter, $optional);
+        if ($detect_mode = $this->detectMode(__FUNCTION__, $response, $parameter, $optional)) {
+            return $detect_mode;
+        }
+        return $response;
+    }
+
+    public function getMPI($parameter)
+    {
+        $response = $this->connect->getMPI($parameter);
+        if ($detect_mode = $this->detectMode(__FUNCTION__, $response, $parameter)) {
+            return $detect_mode;
+        }
+        return $response;
+    }
+
+    public function deactivateCollection($parameter)
+    {
+        $response = $this->connect->deactivateCollection($parameter);
+        if ($detect_mode = $this->detectMode(__FUNCTION__, $response, $parameter)) {
+            return $detect_mode;
+        }
+        return $response;
+    }
+
+    public function activateCollection($parameter)
+    {
+        $response = $this->connect->deactivateCollection($parameter, 'activate');
+        if ($detect_mode = $this->detectMode(__FUNCTION__, $response, $parameter)) {
+            return $detect_mode;
+        }
+        return $response;
+    }
+
+    public function createBill($parameter, $optional = array(), $sendCopy = '')
+    {
+        /* Email or Mobile must be set */
+        if (empty($parameter['email']) && empty($parameter['mobile'])) {
+            throw new \Exception("Email or Mobile must be set!");
+        }
+
+        /* Manipulate Deliver features to allow Email/SMS Only copy */
+        if ($sendCopy === '0') {
+            $optioonal['deliver'] = 'false';
+        } elseif ($sendCopy === '1' && !empty($parameter['email'])) {
+            $optional['deliver'] = 'true';
+            unset($parameter['mobile']);
+        } elseif ($sendCopy === '2' && !empty($parameter['mobile'])) {
+            $optional['deliver'] = 'true';
+            unset($parameter['email']);
+        } elseif ($sendCopy === '3') {
+            $optional['deliver'] = 'true';
+        }
+
+        /* Validate Mobile Number first */
+        if (!empty($parameter['mobile'])) {
+            /* Strip all unwanted character */
+            $parameter['mobile'] = preg_replace('/[^0-9]/', '', $parameter['mobile']);
+
+            /* Add '6' if applicable */
+            $parameter['mobile'] = $parameter['mobile'][0] === '0' ? '6'.$parameter['mobile'] : $parameter['mobile'];
+
+            /* If the number doesn't have valid formatting, reject it */
+            /* The ONLY valid format '<1 Number>' + <10 Numbers> or '<1 Number>' + <11 Numbers> */
+            /* Example: '60141234567' or '601412345678' */
+            if (!preg_match('/^[0-9]{11,12}$/', $parameter['mobile'], $m)) {
+                $parameter['mobile'] = '';
+            }
+        }
+
+        /* Create Bills */
+        $bill = $this->connect->createBill($parameter, $optional);
+        if ($bill[0] === 200) {
+            return $bill;
+        }
+
+        /* Determine if the API Key is belong to Staging */
+        if ($detect_mode = $this->detectMode(__FUNCTION__, $bill, $parameter, $optional, $sendCopy)) {
+            return $detect_mode;
+        }
+
+        /* Check if Failed caused by wrong Collection ID */
+        $collection = $this->toArray($this->getCollection($parameter['collection_id']));
+
+        /* If doesn't exists or belong to another merchant */
+        /* + In-case the collection id is an empty string */
+        if ($collection[0] === 404 || $collection[0] === 401 || empty($parameter['collection_id'])) {
+            /* Get All Active & Inactive Collection List */
+            $collectionIndexActive = $this->toArray($this->getCollectionIndex(array('page'=>'1', 'status'=>'active')));
+            $collectionIndexInactive = $this->toArray($this->getCollectionIndex(array('page'=>'1', 'status'=>'inactive')));
+
+            /* If Active Collection not available but Inactive Collection is available */
+            if (empty($collectionIndexActive[1]['collections']) && !empty($collectionIndexInactive[1]['collections'])) {
+                /* Use inactive collection */
+                $parameter['collection_id'] = $collectionIndexInactive[1]['collections'][0]['id'];
+            }
+
+            /* If there is Active Collection */
+            elseif (!empty($collectionIndexActive[1]['collections'])) {
+                $parameter['collection_id'] = $collectionIndexActive[1]['collections'][0]['id'];
+            }
+
+            /* If there is no Active and Inactive Collection */
+            else {
+                $collection = $this->toArray($this->createCollection('Payment for Purchase'));
+                $parameter['collection_id'] = $collection[1]['id'];
+            }
+        } else {
+            return $bill;
+        }
+
+        /* Create Bills */
+        return $this->connect->createBill($parameter, $optional);
+    }
+
+    public function deleteBill($parameter)
+    {
+        $response = $this->connect->deleteBill($parameter);
+        if ($detect_mode = $this->detectMode(__FUNCTION__, $response, $parameter)) {
+            return $detect_mode;
+        }
+        return $response;
+    }
+
+    public function getBill($parameter)
+    {
+        $response = $this->connect->getBill($parameter);
+        if ($detect_mode = $this->detectMode(__FUNCTION__, $response, $parameter)) {
+            return $detect_mode;
+        }
+        return $response;
+    }
+
+    public function bankAccountCheck($parameter)
+    {
+        $response = $this->connect->bankAccountCheck($parameter);
+        if ($detect_mode = $this->detectMode(__FUNCTION__, $response, $parameter)) {
+            return $detect_mode;
+        }
+        return $response;
+    }
+
+    public function getTransactionIndex($id, $parameter = array('page'=>'1'))
+    {
+        $response = $this->connect->getTransactionIndex($id, $parameter);
+        if ($detect_mode = $this->detectMode(__FUNCTION__, $response, $id, $parameter)) {
+            return $detect_mode;
+        }
+        return $response;
+    }
+
+    public function getPaymentMethodIndex($parameter)
+    {
+        $response = $this->connect->getPaymentMethodIndex($parameter);
+        if ($detect_mode = $this->detectMode(__FUNCTION__, $response, $parameter)) {
+            return $detect_mode;
+        }
+        return $response;
+    }
+
+    public function updatePaymentMethod($parameter)
+    {
+        $response = $this->connect->updatePaymentMethod($parameter);
+        if ($detect_mode = $this->detectMode(__FUNCTION__, $response, $parameter)) {
+            return $detect_mode;
+        }
+        return $response;
+    }
+
+    public function getBankAccountIndex($parameter = array('account_numbers'=>['0','1']))
+    {
+        $response = $this->connect->getBankAccountIndex($parameter);
+        if ($detect_mode = $this->detectMode(__FUNCTION__, $response, $parameter)) {
+            return $detect_mode;
+        }
+        return $response;
+    }
+
+    public function getBankAccount($parameter)
+    {
+        $response = $this->connect->getBankAccount($parameter);
+        if ($detect_mode = $this->detectMode(__FUNCTION__, $response, $parameter)) {
+            return $detect_mode;
+        }
+        return $response;
+    }
+
+    public function createBankAccount($parameter)
+    {
+        $response = $this->connect->createBankAccount($parameter);
+        if ($detect_mode = $this->detectMode(__FUNCTION__, $response, $parameter)) {
+            return $detect_mode;
+        }
+        return $response;
+    }
+
+    public function bypassBillplzPage($bill)
+    {
+        $bills = \json_decode($bill, true);
+        if ($bills['reference_1_label']!=='Bank Code') {
+            return \json_encode($bill);
+        }
+
+        $fpxBanks = $this->toArray($this->getFpxBanks());
+        if ($fpxBanks[0] !== 200) {
+            return \json_encode($bill);
+        }
+
+        $found = false;
+        foreach ($fpxBanks[1]['banks'] as $bank) {
+            if ($bank['name'] === $bills['reference_1']) {
+                if ($bank['active']) {
+                    $found = true;
+                    break;
+                }
+                return \json_encode($bill);
+            }
+        }
+
+        if ($found) {
+            $bills['url'].='?auto_submit=true';
+        }
+
+        return json_encode($bills);
+    }
+
+    public function getFpxBanks()
+    {
+        $response = $this->connect->getFpxBanks();
+        if ($detect_mode = $this->detectMode(__FUNCTION__, $response)) {
+            return $detect_mode;
+        }
+        return $response;
+    }
+
+    public function toArray($json)
+    {
+        return $this->connect->toArray($json);
+    }
+}

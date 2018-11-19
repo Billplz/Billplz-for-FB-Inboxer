@@ -4,8 +4,8 @@ Accept payment using Billplz by using this plugin
 # System Requirements
 
 1. [FB Inboxer - Master Facebook Messenger Marketing Software](https://codecanyon.net/item/fb-inboxer-master-facebook-messenger-marketing-software/19578006?s_rank=1)
-2. Build on release - **21 November 17**
-3. **PHP 5.6** or newer
+2. Build on release - **9 November 18**
+3. **PHP 7.0** or newer
 
 # Installation
 
@@ -67,5 +67,4 @@ Accept payment using Billplz by using this plugin
 
 # Notes
 
-* Since everything is managed through the system, there is no Billplz **API notification** features included in this integration.
-* API Key, Collection ID and X Signature Key can be obtained from https://billplz-staging.herokuapp.com for testing.
+Facebook: [Billplz Dev Jam](https://www.facebook.com/groups/billplzdevjam/)

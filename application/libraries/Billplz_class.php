@@ -14,7 +14,7 @@ class Billplz_class
 
     public function __construct()
     {
-        $this->CI =& get_instance();
+        $this->CI =&get_instance();
         $this->CI->load->database();
 
         $databae_name= $this->CI->db->database;
@@ -22,7 +22,7 @@ class Billplz_class
 
     public function set_button()
     {
-        $createbill =site_url()."billplz_ipn/create_bill";
+        $createbill = site_url()."billplz_ipn/create_bill";
         $button="";
 
         $button.= "<form action='{$createbill}' method='get' style='padding: 0; margin: 0;'>";
@@ -34,21 +34,4 @@ class Billplz_class
 
         return $button;
     }
-
-    /****
-         This run_ipn() function will return the verified status that is payment is VERIFIED or NOTVERIFIED. And some correspoding
-         data of the payment.
-
-             $payment_info=$billplz_ipn->run_ipn();
-            $verify_status=$payment_info['verify_status'];
-            $first_name=$payment_info['data']['first_name'];
-            $last_name=$payment_info['data']['last_name'];
-            $buyer_email=$payment_info['data']['payer_email'];
-            $receiver_email=$payment_info['data']['receiver_id'];
-            $country=$payment_info['data']['address_country'];
-            $payment_date=$payment_info['data']['payment_date'];
-            $transaction_id=$payment_info['data']['txn_id'];
-            $payment_type=$payment_info['data']['payment_type'];
-
-    ***/
 }
