@@ -4,7 +4,7 @@ class Billplz_API
 {
     private $connect;
 
-    public function __construct($connect)
+    public function __construct($connect = false)
     {
         $this->connect = $connect;
     }

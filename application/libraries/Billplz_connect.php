@@ -17,7 +17,7 @@ class Billplz_Connect
     const PRODUCTION_URL = 'https://www.billplz.com/api/';
     const STAGING_URL = 'https://billplz-staging.herokuapp.com/api/';
 
-    public function __construct($api_key)
+    public function __construct($api_key = false)
     {
         $this->api_key = $api_key;
 

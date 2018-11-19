@@ -40,15 +40,17 @@ class Billplz_ipn extends CI_Controller
         $optional = array(
             'redirect_url' => $redirect_url,
             'reference_2_label' => 'ID',
-            'reference_2' => "$user_id_$reference_2"
+            'reference_2' => "{$user_id}_{$reference_2}"
         );
 
         $this->session->unset_userdata('billplz_amount');
         $this->session->unset_userdata('billplz_description');
 
-        list($rheader, $rbody) = $billplz->createBill($parameter, $optional, '0') ;
+        list($rheader, $rbody) = $billplz->toArray($billplz->createBill($parameter, $optional, '0'));
         if ($rheader !== 200) {
-            error_log('Bill failed to be created: '. print_r($rbody, true));
+            $message = 'Bill failed to be created: '. print_r($rbody, true);
+            error_log($message);
+            exit($message);
         }
         $this->load->helper('url');
 
