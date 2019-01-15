@@ -113,7 +113,7 @@ class Billplz_ipn extends CI_Controller
             $prev_cycle_expired_date=$info['cycle_expired_date'];
         }
 
-        if ($prev_cycle_expired_date=="") {
+        if ($prev_cycle_expired_date==="" || empty($prev_cycle_expired_date)) {
             $cycle_start_date=date('Y-m-d');
             $cycle_expired_date=date("Y-m-d", strtotime($validity_str, strtotime($cycle_start_date)));
         } elseif (strtotime($prev_cycle_expired_date) < strtotime(date('Y-m-d'))) {
@@ -144,7 +144,7 @@ class Billplz_ipn extends CI_Controller
             "first_name"        => $rbody['name'],
             "last_name"         => '',
             "paypal_email"      => $rbody['email'],
-            "receiver_email"    => $billplz_api_key . ': BILLPLZ',
+            "receiver_email"    => $payment_config[0]['billplz_api_key'] . ': BILLPLZ',
             "country"           => 'MALAYSIA',
             "payment_date"      => date("Y-m-d\TH:i:s.uP", time()),
             "payment_type"      => 'BILLPLZ',
