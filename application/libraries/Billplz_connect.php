@@ -40,7 +40,7 @@ class Billplz_Connect
         }
     }
 
-    public function setMode(bool $is_production = false)
+    public function setMode($is_production = false)
     {
         $this->is_production = $is_production;
         if ($is_production) {
