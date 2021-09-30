@@ -1,4 +1,6 @@
 # Billplz for FB Inboxer
+*This project is no longer supported.*
+
 Accept payment using Billplz by using this plugin
 
 # System Requirements
